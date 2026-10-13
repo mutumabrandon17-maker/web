@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mutarii Security System | AI Biometric Access & Media Upload</title>
+
+  <!-- Face API -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+
+  <style>
+    /* Basic styling for login/register and dashboard container */
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #071017;
+      color: #e8f4ff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    #authScreen {
+      max-width: 440px;
+      width: 100%;
+      background: #0a1524;
+      border-radius: 18px;
+      padding: 35px;
+      box-shadow: 0 20px 70px rgba(0,0,0,.5);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .brand {
+      text-align: center;
+    }
+    .brand-icon {
+      width: 75px;
+      height: 75px;
+      margin: auto;
+      border: 2px solid #29a9ff;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #29a9ff;
+      font-size: 25px;
+      font-weight: bold;
+      box-shadow: 0 0 30px rgba(41,169,255,.3);
+    }
+    .brand h1 {
+      margin-top: 15px;
+      font-size: 28px;
+      letter-spacing: 4px;
+    }
+    .brand p {
+      margin-top: 7px;
+      color: #7087a0;
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+    .auth-tabs {
+      display: flex;
+      gap: 8px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 11px;
+      background: #0c2034;
+      border: 1px solid #294862;
+      color: #849bb2;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
+    }
+    .auth-tab.active {
+      background: #147fc4;
+      border-color: #29a9ff;
+      color: white;
+    }
+    .auth-form {
+      display: none;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .auth-form.active {
+      display: flex;
+    }
+    label {
+      font-size: 13px;
+      color: #8fa6bd;
+      margin-bottom: 6px;
+      display: block;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 13px;
+      background: #07111e;
+      border: 1px solid #284864;
+      border-radius: 9px;
+      color: white;
+      outline: none;
+      font-size: 14px;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: #29a9ff;
+    }
+    button.auth-button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 9px;
+      background: #147fc4;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button.auth-button:hover {
+      background: #1b99e5;
+    }
+    #authMessage, #registerMessage {
+      text-align: center;
+      font-size: 13px;
+      min-height: 20px;
+      color: #ff6978;
+    }
+    /* Face scan viewer */
+    .scanner-shell {
+      border: 1px solid #284864;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #02070d;
+      position: relative;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      gap: 10px;
+    }
+    #video {
+      width: 100%;
+      max-height: 260px;
+      background: black;
+      border-radius: 12px;
+      transform: scaleX(-1);
+    }
+    #scanCanvas {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: calc(100% - 20px);
+      height: 260px;
+      pointer-events: none;
+      border-radius: 12px;
+    }
+    .scan-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .scan-controls button {
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: none;
+      background: #147fc4;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      flex: 1 1 120px;
+      max-width: 150px;
+    }
+    .scan-controls button.danger {
+      background: #7c2732;
+    }
+    .scan-result {
+      text-align: center;
+      font-size: 14px;
+      color: #39e58c;
+      min-height: 24px;
+    }
+    /* Dashboard container */
+    #dashboardContainer {
+      width: 100%;
+      max-width: 1200px;
+      background: #0a1524;
+      border-radius: 18px;
+      padding: 25px;
+      box-shadow: 0 20px 70px rgba(0,0,0,.5);
+      color: #e8f3ff;
+      display: none;
+      flex-direction: column;
+      min-height: 80vh;
+    }
+    header.dash-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1b3651;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    .dash-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .dash-brand-icon {
+      width: 50px;
+      height: 50px;
+      border: 2px solid #29a9ff;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 22px;
+      color: #29a9ff;
+    }
+    .dash-brand-text h2 {
+      font-size: 22px;
+      letter-spacing: 2px;
+      margin: 0;
+    }
+    .dash-brand-text small {
+      color: #687f98;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    .dash-header-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .operator-name {
+      font-size: 14px;
+      color: #8fa8c0;
+    }
+    button#logoutBtn {
+      padding: 9px 14px;
+      border-radius: 8px;
+      border: 1px solid #63313a;
+      background: #25131a;
+      color: #ff7885;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    nav.dash-nav {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    nav.dash-nav button {
+      background: #0c2034;
+      border: 1px solid #294862;
+      color: #849bb2;
+      border-radius: 8px;
+      padding: 10px 18px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      user-select: none;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    nav.dash-nav button.active {
+      background: #147fc4;
+      border-color: #29a9ff;
+      color: white;
+    }
+    section.dash-section {
+      display: none;
+      flex-direction: column;
+      gap: 15px;
+    }
+    section.dash-section.active {
+      display: flex;
+    }
+    section.dash-section h3 {
+      margin-top: 0;
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 1px;
+    }
+    section.dash-section p {
+      color: #7087a0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    /* Media Upload Section */
+    #mediaUpload {
+      flex-direction: column;
+      gap: 15px;
+      display: none;
+    }
+    #mediaUpload label {
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: block;
+    }
+    #mediaUpload input[type="file"],
+    #mediaUpload input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #294862;
+      background: #07111e;
+      color: #e8f3ff;
+      font-size: 14px;
+    }
+    #mediaUpload button {
+      margin-top: 8px;
+      padding: 10px 16px;
+      background: #147fc4;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    #previewArea {
+      margin-top: 20px;
+      border: 1px solid #294862;
+      border-radius: 12px;
+      padding: 10px;
+      background: #02070d;
+      min-height: 180px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #7087a0;
+    }
+    #previewArea img,
+    #previewArea video {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: 12px;
+    }
+    #faceDetectResult {
+      margin-top: 15px;
+      color: #39e58c;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Authentication Screen -->
+  <section id="authScreen">
+    <div class="brand">
+      <div class="brand-icon">MS</div>
+      <h1>Mutarii Security</h1>
+      <p>Biometric Security System</p>
+    </div>
+
+    <div class="auth-tabs">
+      <div class="auth-tab active" data-tab="login">Login</div>
+      <div class="auth-tab" data-tab="register">Register</div>
+    </div>
+
+    <form id="loginForm" class="auth-form active" autocomplete="off">
+      <label for="loginUsername">Username</label>
+      <input id="loginUsername" type="text" placeholder="Enter username" value="admin" />
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" placeholder="Enter password" value="1234" />
+
+      <div class="scanner-shell">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="scanCanvas"></canvas>
+        <div class="scan-controls">
+          <button type="button" id="startCameraBtn">Start Camera</button>
+          <button type="button" id="scanFaceBtn">Run AI Face Scan</button>
+          <button type="button" id="stopCameraBtn" class="danger">Stop Camera</button>
+        </div>
+        <div class="scan-result" id="scanResult">Waiting for scan...</div>
+      </div>
+
+      <button type="submit" class="auth-button">Login</button>
+      <div id="authMessage"></div>
+    </form>
+
+    <form id="registerForm" class="auth-form" autocomplete="off" style="display:none;">
+      <label for="regName">Full Name</label>
+      <input id="regName" type="text" placeholder="Enter full name" />
+      <label for="regUsername">Username</label>
+      <input id="regUsername" type="text" placeholder="Create username" />
+      <label for="regPassword">Password</label>
+      <input id="regPassword" type="password" placeholder="Create password" />
+      <label for="regBiometric">Biometric Label</label>
+      <input id="regBiometric" type="text" placeholder="Face label for AI demo match" />
+      <button type="submit" class="auth-button">Register</button>
+      <div id="registerMessage"></div>
+    </form>
+  </section>
+
+  <!-- Dashboard container will be injected here after login -->
+  <div id="dashboardContainer"></div>
+
+<script>
+  // Basic tab switching for login/register
+  const authTabs = document.querySelectorAll(".auth-tab");
+  const loginForm = document.getElementById("loginForm");
+  const registerForm = document.getElementById("registerForm");
+  const authMessage = document.getElementById("authMessage");
+  const registerMessage = document.getElementById("registerMessage");
+  const authScreen = document.getElementById("authScreen");
+  const dashboardContainer = document.getElementById("dashboardContainer");
+
+  authTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      authTabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      if (tab.dataset.tab === "login") {
+        loginForm.style.display = "flex";
+        registerForm.style.display = "none";
+        authMessage.textContent = "";
+      } else {
+        loginForm.style.display = "none";
+        registerForm.style.display = "flex";
+        registerMessage.textContent = "";
+      }
+    });
+  });
+
+  // Users data stored in localStorage for demo
+  let users = JSON.parse(localStorage.getItem("mutariiUsers") || "null") || [
+    { fullName: "Admin User", username: "admin", password: "1234", biometric: "admin" }
+  ];
+
+  function saveUsers() {
+    localStorage.setItem("mutariiUsers", JSON.stringify(users));
+  }
+
+  // Face API setup
+  const video = document.getElementById("video");
+  const scanCanvas = document.getElementById("scanCanvas");
+  const scanResult = document.getElementById("scanResult");
+  const startCameraBtn = document.getElementById("startCameraBtn");
+  const stopCameraBtn = document.getElementById("stopCameraBtn");
+  const scanFaceBtn = document.getElementById("scanFaceBtn");
+
+  let stream = null;
+  let modelsLoaded = false;
+  let lastScan = { matched: false, name: null, confidence: 0 };
+
+  async function loadModels() {
+    const modelBase = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(modelBase),
+      faceapi.nets.faceLandmark68Net.loadFromUri(modelBase),
+      faceapi.nets.faceRecognitionNet.loadFromUri(modelBase)
+    ]);
+    modelsLoaded = true;
+    scanResult.textContent = "AI models loaded. Start camera.";
+  }
+  loadModels();
+
+  async function startCamera() {
+    if (stream) return;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      video.srcObject = stream;
+      await video.play();
+      scanCanvas.width = video.videoWidth;
+      scanCanvas.height = video.videoHeight;
+      scanResult.textContent = "Camera started. Ready to scan.";
+    } catch (e) {
+      scanResult.textContent = "Camera access denied or unavailable.";
+    }
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      stream = null;
+    }
+    video.srcObject = null;
+    const ctx = scanCanvas.getContext("2d");
+    ctx.clearRect(0, 0, scanCanvas.width, scanCanvas.height);
+    scanResult.textContent = "Camera stopped.";
+  }
+
+  function drawBox(detection) {
+    const ctx = scanCanvas.getContext("2d");
+    ctx.clearRect(0, 0, scanCanvas.width, scanCanvas.height);
+    if (!detection) return;
+    const dims = faceapi.matchDimensions(scanCanvas, video, true);
+    const resized = faceapi.resizeResults(detection, dims);
+    faceapi.draw.drawDetections(scanCanvas, resized);
+  }
+
+  // Fake biometric matching by username or biometric label
+  function fakeMatch(usernameInput) {
+    const input = (usernameInput || "").toLowerCase().trim();
+    const user = users.find(u => u.username.toLowerCase() === input || (u.biometric || "").toLowerCase() === input);
+    if (user) {
+      return { matched: true, name: user.fullName, confidence: 85 };
+    }
+    return { matched: false, name: "Unknown face", confidence: 30 };
+  }
+
+  async function runFaceScan() {
+    if (!modelsLoaded) {
+      scanResult.textContent = "Models not loaded yet.";
+      return;
+    }
+    if (!stream) {
+      scanResult.textContent = "Start camera first.";
+      return;
+    }
+    scanResult.textContent = "Scanning face...";
+    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+    drawBox(detection);
+    if (!detection) {
+      lastScan = { matched: false, name: null, confidence: 0 };
+      scanResult.textContent = "No face detected.";
+      return;
+    }
+    const result = fakeMatch(document.getElementById("loginUsername").value);
+    lastScan = result;
+    scanResult.textContent = result.matched ? `Matched: ${result.name} (${result.confidence}%)` : "Face not recognized";
+  }
+
+  startCameraBtn.onclick = startCamera;
+  stopCameraBtn.onclick = stopCamera;
+  scanFaceBtn.onclick = runFaceScan;
+
+  // Register form submit
+  registerForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const fullName = document.getElementById("regName").value.trim();
+    const username = document.getElementById("regUsername").value.trim();
+    const password = document.getElementById("regPassword").value.trim();
+    const biometric = document.getElementById("regBiometric").value.trim() || username;
+
+    if (!fullName || !username || !password) {
+      registerMessage.textContent = "Please fill all required fields.";
+      registerMessage.style.color = "#ff6978";
+      return;
+    }
+    if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+      registerMessage.textContent = "Username already exists.";
+      registerMessage.style.color = "#ff6978";
+      return;
+    }
+    users.push({ fullName, username, password, biometric });
+    saveUsers();
+    registerMessage.style.color = "#39e58c";
+    registerMessage.textContent = `User ${fullName} registered successfully. You can now login.`;
+    registerForm.reset();
+  });
+
+  // Login form submit - ONLY username/password required now, face scan NOT mandatory
+  loginForm.addEventListener("submit", e => {
+    e.preventDefault();
+    authMessage.textContent = "";
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value.trim();
+
+    if (!username || !password) {
+      authMessage.textContent = "Please enter username and password.";
+      return;
+    }
+    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+    if (!user) {
+      authMessage.textContent = "Invalid username or password.";
+      return;
+    }
+    // FACE SCAN CHECK REMOVED - login allowed without face scan
+    injectDashboard(user);
+  });
+
+  // Inject dashboard HTML dynamically after login
+  function injectDashboard(user) {
+    authScreen.style.display = "none";
+    dashboardContainer.style.display = "flex";
+    dashboardContainer.style.flexDirection = "column";
+    dashboardContainer.innerHTML = `
+      <header class="dash-header">
+        <div class="dash-brand">
+          <div class="dash-brand-icon">MS</div>
+          <div class="dash-brand-text">
+            <h2>Mutarii Security System</h2>
+            <small>Made in Kenya</small>
+          </div>
+        </div>
+        <div class="dash-header-right">
+          <div class="operator-name">Welcome, ${user.fullName}</div>
+          <button id="logoutBtn">Logout</button>
+        </div>
+      </header>
+      <nav class="dash-nav">
+        <button class="active" data-section="home">Home</button>
+        <button data-section="settings">Settings</button>
+        <button data-section="cases">Cases</button>
+        <button data-section="registration">Registration</button>
+        <button data-section="reports">Reports</button>
+        <button data-section="mediaUpload">Media Upload</button>
+      </nav>
+      <section id="home" class="dash-section active">
+        <h3>Home</h3>
+        <p>Welcome to Mutarii Security System made in Kenya. This is your dashboard home.</p>
+      </section>
+      <section id="settings" class="dash-section">
+        <h3>Settings</h3>
+        <p>Configure your system settings here.</p>
+      </section>
+      <section id="cases" class="dash-section">
+        <h3>Cases</h3>
+        <p>Manage and view security cases here.</p>
+      </section>
+      <section id="registration" class="dash-section">
+        <h3>Registration</h3>
+        <p>Register new operators or personnel here.</p>
+      </section>
+      <section id="reports" class="dash-section">
+        <h3>Reports</h3>
+        <p>View system reports and analytics here.</p>
+      </section>
+      <section id="mediaUpload" class="dash-section" style="flex-direction: column; gap: 15px;">
+        <h3>Upload Images or CCTV Footage</h3>
+
+        <div>
+          <label for="fileInput">Upload from your device:</label><br />
+          <input type="file" id="fileInput" accept="image/*,video/*" />
+        </div>
+
+        <div style="margin-top: 15px;">
+          <label for="urlInput">Or enter URL of image/video:</label><br />
+          <input type="text" id="urlInput" placeholder="https://example.com/video.mp4" style="width: 100%; padding: 8px;" />
+          <button id="loadUrlBtn" style="margin-top: 8px; padding: 8px 16px;">Load from URL</button>
+        </div>
+
+        <div id="previewArea" style="margin-top: 20px; border: 1px solid #294862; border-radius: 12px; padding: 10px; background: #02070d; min-height: 180px; display: flex; justify-content: center; align-items: center; color: #7087a0;">
+          <p>Preview will appear here after upload or URL load.</p>
+        </div>
+
+        <button id="runFaceDetectBtn" style="margin-top: 15px; padding: 12px 20px; background: #147fc4; color: white; border: none; border-radius: 8px; cursor: pointer;">
+          Run Face Detection
+        </button>
+
+        <div id="faceDetectResult" style="margin-top: 15px; color: #39e58c; font-weight: 600;"></div>
+      </section>
+    `;
+
+    // Setup dashboard tab switching
+    const tabs = dashboardContainer.querySelectorAll(".dash-nav button");
+    const sections = dashboardContainer.querySelectorAll(".dash-section");
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const target = tab.dataset.section;
+        sections.forEach(sec => {
+          sec.classList.toggle("active", sec.id === target);
+        });
+      });
+    });
+
+    // Logout button
+    const logoutBtn = dashboardContainer.querySelector("#logoutBtn");
+    logoutBtn.addEventListener("click", () => {
+      dashboardContainer.innerHTML = "";
+      dashboardContainer.style.display = "none";
+      authScreen.style.display = "block";
+      lastScan = { matched: false, name: null, confidence: 0 };
+      scanResult.textContent = "Waiting for scan...";
+      stopCamera();
+    });
+
+    // Media Upload elements and logic
+    const fileInput = dashboardContainer.querySelector("#fileInput");
+    const urlInput = dashboardContainer.querySelector("#urlInput");
+    const loadUrlBtn = dashboardContainer.querySelector("#loadUrlBtn");
+    const previewArea = dashboardContainer.querySelector("#previewArea");
+    const runFaceDetectBtn = dashboardContainer.querySelector("#runFaceDetectBtn");
+    const faceDetectResult = dashboardContainer.querySelector("#faceDetectResult");
+
+    let currentMediaElement = null;
+
+    function clearPreview() {
+      previewArea.innerHTML = '<p style="color: #7087a0;">Preview will appear here after upload or URL load.</p>';
+      faceDetectResult.textContent = '';
+      currentMediaElement = null;
+    }
+
+    fileInput.addEventListener('change', () => {
+      faceDetectResult.textContent = '';
+      if (fileInput.files.length === 0) {
+        clearPreview();
+        return;
+      }
+      const file = fileInput.files[0];
+      const url = URL.createObjectURL(file);
+      loadMedia(url, file.type);
+    });
+
+    loadUrlBtn.addEventListener('click', () => {
+      faceDetectResult.textContent = '';
+      const url = urlInput.value.trim();
+      if (!url) {
+        alert('Please enter a valid URL');
+        return;
+      }
+      try {
+        new URL(url);
+      } catch {
+        alert('Invalid URL format');
+        return;
+      }
+      const ext = url.split('.').pop().toLowerCase();
+      let type = '';
+      if (['jpg','jpeg','png','gif','bmp','webp'].includes(ext)) {
+        type = 'image/*';
+      } else if (['mp4','webm','ogg','mov','avi'].includes(ext)) {
+        type = 'video/*';
+      } else {
+        alert('Unsupported media type');
+        return;
+      }
+      loadMedia(url, type);
+    });
+
+    function loadMedia(url, type) {
+      clearPreview();
+      if (type.startsWith('image')) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.maxWidth = '100%';
+        img.style.borderRadius = '12px';
+        img.onload = () => URL.revokeObjectURL(url);
+        previewArea.innerHTML = '';
+        previewArea.appendChild(img);
+        currentMediaElement = img;
+      } else if (type.startsWith('video')) {
+        const video = document.createElement('video');
+        video.src = url;
+        video.controls = true;
+        video.style.maxWidth = '100%';
+        video.style.borderRadius = '12px';
+        previewArea.innerHTML = '';
+        previewArea.appendChild(video);
+        currentMediaElement = video;
+      }
+    }
+
+    runFaceDetectBtn.addEventListener('click', async () => {
+      faceDetectResult.textContent = '';
+      if (!currentMediaElement) {
+        alert('Please upload or load media first.');
+        return;
+      }
+      faceDetectResult.textContent = 'Running face detection...';
+
+      try {
+        if (currentMediaElement.tagName === 'IMG') {
+          const detections = await faceapi.detectAllFaces(currentMediaElement, new faceapi.TinyFaceDetectorOptions());
+          faceDetectResult.textContent = `Detected ${detections.length} face(s) in the image.`;
+        } else if (currentMediaElement.tagName === 'VIDEO') {
+          // For video, detect faces on the current frame
+          const canvas = faceapi.createCanvasFromMedia(currentMediaElement);
+          const displaySize = { width: currentMediaElement.videoWidth, height: currentMediaElement.videoHeight };
+          faceapi.matchDimensions(canvas, displaySize);
+          const detections = await faceapi.detectAllFaces(currentMediaElement, new faceapi.TinyFaceDetectorOptions());
+          faceDetectResult.textContent = `Detected ${detections.length} face(s) in the video frame.`;
+        }
+      } catch (err) {
+        faceDetectResult.textContent = 'Error running face detection.';
+        console.error(err);
+      }
+    });
+
+    stopCamera();
+  }
+</script>
+
+</body>
+</html>
